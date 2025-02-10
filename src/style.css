@@ -1,6 +1,25 @@
-html,
-body {
+body, html {
   margin: 0;
   padding: 0;
   overflow: hidden;
+}
+
+#cesiumContainer {
+  position: absolute;
+  width: 100vw;
+  height: 100vh;
+}
+
+.controls {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 100;
+}
+
+button {
+  padding: 10px;
+  margin: 5px;
+  font-size: 16px;
+  cursor: pointer;
 }
