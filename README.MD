@@ -13,3 +13,5 @@ npm i
 ### 2. Start the Development Server
 Once the dependencies are installed, start the development server with:
 npm run dev
+
+(Added .env file with token despite being not best practice just to facilitate ease of testing)
