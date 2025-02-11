@@ -1,121 +1,95 @@
 import './style.css';
 import {
-	Cartesian3,
-	Color,
-	Ion,
-	Math as CesiumMath,
-	Primitive,
-	Viewer,
-	BoxGeometry,
-	GeometryInstance,
-	Matrix4,
-	VertexFormat,
-	PerInstanceColorAppearance,
-	ColorGeometryInstanceAttribute,
+    Cartesian3,
+    Color,
+    Ion,
+    Math as CesiumMath,
+    Viewer,
+    Transforms,
+    DirectionalLight,
+    Matrix4
 } from 'cesium';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 
-// Disable default Cesium features (globe, terrain, atmosphere)
+// Set base path and Ion token
 window.CESIUM_BASE_URL = '/Cesium';
 Ion.defaultAccessToken = import.meta.env.VITE_TOKEN;
 
 const viewer = new Viewer('cesiumContainer', {
-	terrain: null,
-	skyBox: false,
-	skyAtmosphere: false,
-	animation: false,
-	timeline: false,
-	fullscreenButton: false,
-	homeButton: false,
-	sceneModePicker: false,
-	baseLayerPicker: false,
-	navigationHelpButton: false,
-	geocoder: false,
-	infoBox: false,
-	selectionIndicator: false,
+    terrain: null,
+    skyBox: false,
+    skyAtmosphere: false,
+    animation: false,
+    timeline: false,
+    fullscreenButton: false,
+    homeButton: false,
+    sceneModePicker: false,
+    baseLayerPicker: false,
+    navigationHelpButton: false,
+    geocoder: false,
+    infoBox: false,
+    selectionIndicator: false,
 });
 
-// Remove all imagery and default globe
-viewer.imageryLayers.removeAll();
+// Scene configuration
 viewer.scene.globe.show = false;
 viewer.scene.fog.enabled = false;
-viewer._cesiumWidget._creditContainer.style.display = 'none'; // Remove Cesium logo
-
-// ✅ Ensure the scene background is black (prevents transparency issues)
+viewer._cesiumWidget._creditContainer.style.display = 'none';
 viewer.scene.backgroundColor = Color.BLACK;
 
-// ✅ Enable lighting effects (ensures objects are visible even without a globe)
-viewer.scene.globe.dynamicAtmosphereLighting = true;
-
-// ✅ Set an initial camera position
+// Camera configuration (looking straight down)
+const center = Cartesian3.fromDegrees(0, 0, 0);
 viewer.camera.setView({
-	destination: Cartesian3.fromDegrees(0, 0, 500),
-	orientation: {
-		heading: CesiumMath.toRadians(0),
-		pitch: CesiumMath.toRadians(-90),
-		roll: 0,
-	},
+    destination: Cartesian3.fromDegrees(0, 0, 500), // 500 meters altitude
+    orientation: {
+        heading: CesiumMath.toRadians(0),
+        pitch: CesiumMath.toRadians(-90), // Directly downward
+        roll: 0
+    }
+});
+
+// Lighting configuration
+viewer.scene.light = new DirectionalLight({
+    direction: Cartesian3.normalize(new Cartesian3(1, 1, -1), new Cartesian3()),
+    intensity: 2.0
 });
 
 // Function to generate cubes
 function generateCubes(count) {
-	// Remove old cubes before adding new ones
-	viewer.scene.primitives.removeAll();
+    viewer.entities.removeAll(); // Clear previous entities
+    
+    const boundary = 500; // 500 meters in each direction
+    const cubeSize = 8; // Reduced size for better visibility
 
-	const instances = [];
-	const boundary = 100; // Defines the confined space (-50 to 50 in each axis)
+    for (let i = 0; i < count; i++) {
+        // Generate local coordinates (meters from center)
+        const east = (Math.random() - 0.5) * boundary;
+        const north = (Math.random() - 0.5) * boundary;
+        const height = (Math.random() - 0.5) * boundary;
 
-	for (let i = 0; i < count; i++) {
-		const x = Math.random() * boundary - boundary / 2;
-		const y = Math.random() * boundary - boundary / 2;
-		const z = Math.random() * boundary - boundary / 2;
+        // Convert to ECEF position
+        const position = Matrix4.multiplyByPoint(
+            Transforms.eastNorthUpToFixedFrame(center),
+            new Cartesian3(east, north, height),
+            new Cartesian3()
+        );
 
-		instances.push(
-			new GeometryInstance({
-				geometry: new BoxGeometry({
-					vertexFormat: VertexFormat.ALL, // ✅ Ensure geometry has correct attributes
-					minimum: new Cartesian3(-1, -1, -1),
-					maximum: new Cartesian3(1, 1, 1),
-				}),
-				modelMatrix: Matrix4.multiplyByTranslation(
-					Matrix4.IDENTITY,
-					new Cartesian3(x, y, z),
-					new Matrix4()
-				),
-				attributes: {
-					color: ColorGeometryInstanceAttribute.fromColor(
-						Color.fromRandom({ alpha: 1.0 })
-					),
-				},
-			})
-		);
-	}
-
-	// ✅ Ensure objects are visible by using `unlit: false`
-	const cubes = new Primitive({
-		geometryInstances: instances,
-		appearance: new PerInstanceColorAppearance({
-			translucent: false,
-			closed: true,
-			flat: false, // ✅ Allow shading
-			faceForward: true, // ✅ Ensures correct lighting
-			unlit: false, // ✅ Enable lighting
-		}),
-	});
-
-	viewer.scene.primitives.add(cubes);
+        viewer.entities.add({
+            position: position,
+            box: {
+                dimensions: new Cartesian3(cubeSize, cubeSize, cubeSize),
+                material: Color.RED.withAlpha(0.8),
+                outline: true,
+                outlineColor: Color.BLACK
+            }
+        });
+    }
 }
 
-// Initial render of 10,000 cubes
+// Initial render
 generateCubes(10000);
 
 // Button event listeners
-document
-	.getElementById('btn-10k')
-	.addEventListener('click', () => generateCubes(10000));
-document
-	.getElementById('btn-100k')
-	.addEventListener('click', () => generateCubes(100000));
-document
-	.getElementById('btn-1m')
-	.addEventListener('click', () => generateCubes(1000000));
+document.getElementById('btn-10k').addEventListener('click', () => generateCubes(10000));
+document.getElementById('btn-100k').addEventListener('click', () => generateCubes(100000));
+document.getElementById('btn-1m').addEventListener('click', () => generateCubes(1000000));
